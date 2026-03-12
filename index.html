@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PTG Lead Intelligence Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.0.0/marked.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+    .dossier-body h1 { font-size:1.1rem; font-weight:700; color:#93c5fd; margin:0.2rem 0 0.6rem; }
+    .dossier-body h2 { font-size:.95rem; font-weight:700; color:#60a5fa; margin:1rem 0 0.4rem; padding-bottom:.3rem; border-bottom:1px solid #1e3a8a; }
+    .dossier-body h3 { font-size:.85rem; font-weight:600; color:#93c5fd; margin:.7rem 0 .25rem; }
+    .dossier-body p { font-size:.8125rem; color:#94a3b8; line-height:1.7; margin:.3rem 0; }
+    .dossier-body ul, .dossier-body ol { padding-left:1.25rem; margin:.25rem 0; }
+    .dossier-body li { font-size:.8125rem; color:#94a3b8; margin:.15rem 0; line-height:1.55; }
+    .dossier-body strong { color:#e2e8f0; font-weight:600; }
+    .dossier-body em { color:#93c5fd; font-style:italic; }
+    .dossier-body hr { border:none; border-top:1px solid #1e3a8a; margin:.75rem 0; }
+    .dossier-body table { width:100%; border-collapse:collapse; font-size:.78rem; margin:.4rem 0; border-radius:8px; overflow:hidden; }
+    .dossier-body th { background:#1e3a8a; color:#93c5fd; padding:.35rem .7rem; text-align:left; font-weight:600; }
+    .dossier-body td { padding:.32rem .7rem; border-bottom:1px solid #172554; color:#94a3b8; }
+    .dossier-body tr:last-child td { border-bottom:none; }
+    .dossier-body tr:hover td { background:#0f172a60; }
+    .dossier-body blockquote { border-left:3px solid #2563eb; padding-left:.75rem; color:#64748b; font-style:italic; margin:.4rem 0; font-size:.8rem; }
+    .dossier-body code { background:#1e293b; padding:.1rem .35rem; border-radius:4px; font-size:.75rem; color:#7dd3fc; font-family:monospace; }
+    .dossier-body a { color:#60a5fa; text-decoration:underline; text-underline-offset:2px; }
+    .dossier-body a:hover { color:#93c5fd; }
+
+    .disc-btn { transition:all .15s; }
+    .disc-btn.active { background:#1d4ed8 !important; border-color:#3b82f6 !important; color:#eff6ff !important; }
+    .disc-btn:hover:not(.active) { background:#1e293b; border-color:#334155 !important; }
+
+    .ind-chip { transition:all .15s; cursor:pointer; }
+    .ind-chip.active { background:#1e3a8a !important; border-color:#3b82f6 !important; color:#bfdbfe !important; }
+    .ind-chip:hover:not(.active) { background:#1e293b; border-color:#334155 !important; }
+
+    @keyframes fadeSlide { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeSlide .3s ease-out; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .cursor::after { content:'▊'; animation:blink .75s step-end infinite; color:#3b82f6; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin { animation:spin 1s linear infinite; }
+
+    @keyframes dot-bounce { 0%,80%,100%{transform:scale(.7);opacity:.3} 40%{transform:scale(1);opacity:1} }
+    .dot-1 { animation:dot-bounce 1.2s ease-in-out infinite; }
+    .dot-2 { animation:dot-bounce 1.2s ease-in-out .2s infinite; }
+    .dot-3 { animation:dot-bounce 1.2s ease-in-out .4s infinite; }
+
+    .hot      { background:#7f1d1d; color:#fca5a5; border-color:#991b1b; }
+    .warm     { background:#78350f; color:#fbbf24; border-color:#92400e; }
+    .lukewarm { background:#1c3364; color:#93c5fd; border-color:#1e3a8a; }
+    .cold     { background:#1e293b; color:#94a3b8; border-color:#334155; }
+
+    #toast { pointer-events:none; transition:opacity .3s, transform .3s; }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-hidden">
+
+<!-- HEADER -->
+<header class="shrink-0 h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm flex items-center px-5 gap-3 z-30 relative">
+  <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-black text-xs tracking-tight select-none">PTG</div>
+  <div>
+    <div class="font-semibold text-sm text-slate-100 leading-tight">Lead Intelligence Engine</div>
+    <div class="text-[10px] text-slate-500 leading-tight">Powered by Claude AI + Live Web Search</div>
+  </div>
+  <div class="ml-auto">
+    <button onclick="openSettings()" title="Customize sender info"
+      class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:border-slate-600 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="flex-1 flex overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="w-60 shrink-0 border-r border-slate-800 bg-slate-900/40 overflow-y-auto flex flex-col gap-5 p-4">
+    <div>
+      <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Service Discipline</p>
+      <div class="space-y-1" id="disciplineList"></div>
+    </div>
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Industry Filter</p>
+        <button onclick="clearIndustries()" class="text-[10px] text-blue-500 hover:text-blue-400 transition-colors">Clear all</button>
+      </div>
+      <div class="flex flex-wrap gap-1.5" id="industryChips"></div>
+    </div>
+    <div class="mt-auto pt-4 border-t border-slate-800/60">
+      <p class="text-[10px] text-slate-600 leading-relaxed">Select a discipline + industries, then enter a company name or describe your ideal prospect. Press <kbd class="bg-slate-800 px-1 py-0.5 rounded text-slate-400">⌘↵</kbd> to search.</p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Query bar -->
+    <div class="shrink-0 bg-slate-900/50 border-b border-slate-800 px-5 py-4">
+      <div class="flex gap-3">
+        <div class="flex-1 relative">
+          <textarea id="queryInput" rows="2"
+            placeholder="Enter a company name, URL, or describe a prospect (e.g. 'regional law firm with 40 attorneys in Pittsburgh')…"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all"
+            onkeydown="handleKey(event)"></textarea>
+        </div>
+        <div class="flex flex-col gap-2 shrink-0">
+          <button id="searchBtn" onclick="runSearch()"
+            class="px-5 h-10 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+            <svg id="searchIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+            <span id="searchLabel">Research</span>
+          </button>
+          <button onclick="clearAll()" class="px-5 h-8 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-300 text-xs rounded-xl transition-colors">Clear all</button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-2.5 items-center" id="examples">
+        <span class="text-[11px] text-slate-600">Try:</span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="flex-1 overflow-y-auto" id="resultsPane">
+      <div id="emptyState" class="flex flex-col items-center justify-center h-full py-16 px-8 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center text-3xl mb-5 shadow-xl">🎯</div>
+        <h2 class="text-base font-semibold text-slate-300 mb-1.5">Ready to Surface Leads</h2>
+        <p class="text-sm text-slate-500 max-w-sm leading-relaxed mb-8">Choose a service discipline, filter by industry if needed, then search for any company or describe your ideal prospect.</p>
+        <div class="grid grid-cols-3 gap-3 max-w-lg text-left">
+          <div class="bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+            <div class="text-xl mb-2">🔍</div>
+            <div class="text-xs font-semibold text-slate-300 mb-1">Live Web Research</div>
+            <div class="text-[11px] text-slate-500 leading-relaxed">Real company data pulled from the web in real time</div>
+          </div>
+          <div class="bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+            <div class="text-xl mb-2">👥</div>
+            <div class="text-xs font-semibold text-slate-300 mb-1">Decision-Maker Contacts</div>
+            <div class="text-[11px] text-slate-500 leading-relaxed">Names, titles, and LinkedIn profiles for the right buyer</div>
+          </div>
+          <div class="bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+            <div class="text-xl mb-2">✉️</div>
+            <div class="text-xs font-semibold text-slate-300 mb-1">Cold Email Ready</div>
+            <div class="text-[11px] text-slate-500 leading-relaxed">Personalized, discipline-specific outreach for the best contact</div>
+          </div>
+        </div>
+      </div>
+      <div id="cardStack" class="p-4 space-y-4"></div>
+    </div>
+  </main>
+</div>
+
+<!-- SETTINGS MODAL (just sender info — no API key needed) -->
+<div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeSettings()"></div>
+  <div class="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="text-base font-semibold text-slate-100">Your Email Signature</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Used to personalize cold emails — saved in session only</p>
+      </div>
+      <button onclick="closeSettings()" class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-1.5">Your Name &amp; Title</label>
+        <input type="text" id="cfgSender" placeholder="Tyler Drenon, Director of Sales"
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-1.5">Your Company</label>
+        <input type="text" id="cfgCompany" placeholder="Pitt Technology Group"
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-1.5">Phone</label>
+        <input type="text" id="cfgPhone" placeholder="(412) 555-0100"
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/30 transition-all" />
+      </div>
+      <button onclick="saveSettings()"
+        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm py-2.5 rounded-xl transition-colors">
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-5 right-5 z-50 opacity-0 translate-y-2 text-sm px-4 py-2.5 rounded-xl shadow-xl border font-medium"></div>
+
+<script>
+
+const S = {
+  company: 'Pitt Technology Group',
+  sender: 'Tyler Drenon',
+  phone: '',
+  discipline: 'ai',
+  industries: new Set(),
+  busy: false,
+};
+
+const DISCIPLINES = {
+  ai: {
+    emoji: '🤖', label: 'AI Services & Automation',
+    examples: ['Regional law firm with 30+ attorneys', 'Healthcare clinic with manual patient intake', 'Accounting firm with repetitive reporting', 'Manufacturer with quality control bottlenecks'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, specializing in identifying companies that need AI automation, custom AI development, and AI consulting services.
+
+CRITICAL EXCLUSION: Never include companies that ARE technology providers, software developers, AI companies, IT consultancies, or any firm that sells tech services themselves. Only identify END-USER companies that NEED AI.
+
+When the user provides a query, use web_search to find REAL, current information. Search for the company website, LinkedIn, leadership team, recent news, and job postings. Then produce a complete dossier using ONLY verifiable facts. Mark inferences with "(inferred)".
+
+OUTPUT FORMAT — follow exactly:
+
+## 🏢 Company Profile: [Company Name]
+
+**Website:** [URL]
+**Industry:** [Specific industry]
+**Headquarters:** [City, State]
+**Est. Employees:** [Range] | **Est. Revenue:** [Range if available]
+**Business Model:** [2–3 sentences]
+**Technology Signals:** [Any tech tools, software, or digital presence indicators]
+**Recent Triggers:** [News, hiring surges, expansions, funding, leadership changes — with sources]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | Why They Matter |
+|------|---------|--------------------|-----------------|
+| [Name or role if not found] | [Title] | [LinkedIn URL or "search LinkedIn"] | [relevance] |
+
+*Primary contact for AI outreach: [Name or role recommendation]*
+
+---
+
+## 🎯 AI Opportunity Analysis
+
+### [Pain Point 1 — specific to this company]
+- **Severity:** High / Medium / Low
+- **Current State:** [How they handle this today]
+- **AI Solution:** [Specific capability]
+- **Estimated ROI:** [Time saved, FTE reduction, or revenue impact]
+
+### [Pain Point 2]
+[same format — 3–5 pain points total]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| AI Readiness | /20 | |
+| Pain Intensity | /20 | |
+| Budget Signal | /20 | |
+| Decision Access | /20 | |
+| Timing | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [Specific subject line]
+
+[Under 150 words. Specific hook, exact pain point, concrete solution, social proof, low-friction CTA. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs used]*`
+  },
+
+  lowvoltage: {
+    emoji: '🔌', label: 'Low Voltage / Fiber',
+    examples: ['Law firm moving to a new floor', 'School district upgrading network', 'Hotel under renovation', 'New distribution warehouse build-out'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, identifying companies that need low voltage cabling, structured cabling, fiber optic runs, and network infrastructure services.
+
+Target signals: office expansions, renovations, new construction, network upgrades, multi-site businesses, aging wiring, facilities/network job postings.
+CRITICAL EXCLUSION: Never include cabling contractors, electrical contractors, IT companies, or telecom companies.
+
+Use web_search for REAL info. Mark inferences "(inferred)".
+
+OUTPUT FORMAT:
+
+## 🏢 Company Profile: [Company Name]
+
+**Website:** [URL]
+**Industry:** [Industry]
+**Headquarters:** [City, State]
+**Est. Employees:** [Range] | **Locations:** [Site count]
+**Business Model:** [What they do]
+**Facility Details:** [Office size, type, locations, construction signals]
+**Recent Triggers:** [New lease, permit filings, expansion, construction bids — with sources]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | Authority |
+|------|---------|--------------------|-----------|
+| [Name] | [Title] | [LinkedIn or note] | [facilities? IT? ops?] |
+
+*Best contact: [recommendation]*
+
+---
+
+## 🔌 Infrastructure Opportunity Analysis
+
+### Primary Project Need
+- **Project Type:** [New install / upgrade / expansion / remediation]
+- **Trigger Event:** [What's driving the need]
+- **Scope Estimate:** [Drops, fiber runs, sq footage, locations]
+- **Urgency:** High / Medium / Low
+
+### Secondary Opportunities
+[Additional cabling or fiber needs]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| Project Readiness | /20 | |
+| Scope & Scale | /20 | |
+| Budget Signal | /20 | |
+| Decision Access | /20 | |
+| Timing | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [Reference their specific project]
+
+[Under 150 words. Reference trigger, offer complimentary infrastructure walk-through. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs]*`
+  },
+
+  msp: {
+    emoji: '🖥️', label: 'MSP Services',
+    examples: ['Dental practice with 5 locations', 'Regional insurance agency 50 employees', 'Non-profit with aging hardware', 'Construction company needing cybersecurity'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, identifying companies that need Managed IT Services — helpdesk, cybersecurity, cloud management, backup & DR, compliance, infrastructure.
+
+Target: SMBs 10–500 employees without dedicated IT, regulated industries (HIPAA, PCI, CMMC), aging hardware, businesses that post non-IT roles but not IT roles.
+CRITICAL EXCLUSION: Never include IT companies, MSPs, software, tech firms, or IT staffing.
+
+Use web_search for REAL info. Mark inferences "(inferred)".
+
+OUTPUT FORMAT:
+
+## 🏢 Company Profile: [Company Name]
+
+**Website:** [URL]
+**Industry:** [Industry]
+**Headquarters:** [City, State]
+**Est. Employees:** [Range] | **Est. Revenue:** [Range]
+**Business Model:** [What they do]
+**Regulatory Environment:** [HIPAA / PCI-DSS / CMMC / SOC2 / none]
+**IT Posture Signals:** [In-house IT? Cloud adoption? Break-fix history? IT job postings?]
+**Recent Triggers:** [Growth, cyber incidents, compliance changes, leadership changes]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | Authority |
+|------|---------|--------------------|-----------|
+| [Name] | [Title] | [LinkedIn] | [CEO / CFO / COO / Office Manager] |
+
+*Best contact: [recommendation]*
+
+---
+
+## 🖥️ MSP Opportunity Analysis
+
+### [Pain Point 1]
+- **Severity:** High / Medium / Low
+- **Evidence:** [What signals this]
+- **MSP Solution:** [Specific managed service]
+- **Estimated MRR:** [e.g. $3,000–$6,000/mo for 50 users]
+
+### [Pain Points 2–4: cybersecurity, backup, compliance, cloud, helpdesk]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| IT Dependency | /20 | |
+| Pain Intensity | /20 | |
+| MRR Potential | /20 | |
+| Decision Access | /20 | |
+| Timing | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [Industry-specific risk angle]
+
+[Under 150 words. Lead with specific industry risk. Offer free IT risk assessment. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs]*`
+  },
+
+  av: {
+    emoji: '📽️', label: 'AV Design & Integration',
+    examples: ['Law firm with outdated conference rooms', 'Corporate HQ building new training center', 'University constructing lecture halls', 'Hotel renovating meeting spaces'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, identifying organizations that need audiovisual design and integration — conference room AV, digital signage, video walls, unified communications, presentation systems.
+
+Target: Corporate offices, law firms, healthcare orgs, universities, hotels, houses of worship, event venues, government buildings — especially those undergoing construction, renovation, or hybrid-work transitions.
+CRITICAL EXCLUSION: Never include AV companies, AV integrators, event production companies, or broadcast firms.
+
+Use web_search for REAL info. Mark inferences "(inferred)".
+
+OUTPUT FORMAT:
+
+## 🏢 Organization Profile: [Name]
+
+**Website:** [URL]
+**Sector:** [Industry/sector]
+**Headquarters:** [City, State]
+**Est. Size:** [Employees or relevant metric]
+**Facility Snapshot:** [Conference rooms, auditoriums, training rooms, lobby]
+**AV Maturity Signals:** [Evidence of current AV, hybrid work setup, tech investment]
+**Recent Triggers:** [Construction, renovation, rebranding, new campus, hybrid mandate]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | AV Buying Role |
+|------|---------|--------------------|----------------|
+| [Name] | [Title] | [LinkedIn] | [Facilities / IT / Operations] |
+
+*Best contact: [recommendation]*
+
+---
+
+## 📽️ AV Opportunity Analysis
+
+### [AV Need 1]
+- **Scope:** [Number/type of rooms, systems needed]
+- **Trigger:** [Why now]
+- **Proposed Solution:** [What we'd design/install]
+- **Estimated Project Value:** [$X,000–$X,000]
+
+### [AV Needs 2–3: digital signage, huddle rooms, all-hands, lobby]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| AV Need Urgency | /20 | |
+| Project Scale | /20 | |
+| Budget Signal | /20 | |
+| Decision Access | /20 | |
+| Timing | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [Reference their specific project]
+
+[Under 150 words. Reference trigger, offer complimentary AV needs assessment. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs]*`
+  },
+
+  voip: {
+    emoji: '📞', label: 'VoIP Phones',
+    examples: ['Medical office still on legacy PBX', 'Insurance agency with remote agents', 'Multi-location restaurant group', 'Growing sales team needing a phone system'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, identifying businesses that need modern VoIP phone systems and unified communications.
+
+Target: SMBs on legacy PBX/landlines, companies with growing remote/hybrid workforces, multi-location businesses, high call volumes (medical, insurance, legal, sales), expiring telecom contracts.
+CRITICAL EXCLUSION: Never include telecom companies, VoIP providers, phone system resellers, or IT companies.
+
+Use web_search for REAL info. Mark inferences "(inferred)".
+
+OUTPUT FORMAT:
+
+## 🏢 Company Profile: [Company Name]
+
+**Website:** [URL]
+**Industry:** [Industry]
+**Headquarters:** [City, State]
+**Est. Employees:** [Range] | **Locations:** [Site count]
+**Business Model:** [What they do]
+**Phone Usage Pattern:** [High call volume? Remote workers? Multi-location?]
+**Legacy System Signals:** [Evidence of traditional landlines, old PBX, fax dependency]
+**Recent Triggers:** [Expansion, new offices, remote work policy, headcount growth]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | Authority |
+|------|---------|--------------------|-----------|
+| [Name] | [Title] | [LinkedIn] | [CEO / CFO / Office Manager / IT Director] |
+
+*Best contact: [recommendation]*
+
+---
+
+## 📞 VoIP Opportunity Analysis
+
+### [Pain Point 1]
+- **Current Pain:** [What's broken/inefficient]
+- **VoIP Solution:** [Specific feature that solves it]
+- **Cost Savings Estimate:** [e.g., "40–60% vs. traditional lines for 30-user org"]
+
+### [Pain Points 2–4: remote work, multi-location, call routing, integrations]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| Legacy Phone Signals | /20 | |
+| Call Volume Intensity | /20 | |
+| Budget Signal | /20 | |
+| Decision Access | /20 | |
+| Contract/Timing Signal | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [Cost savings or pain angle]
+
+[Under 150 words. Lead with cost savings or operational pain. Offer free phone system audit. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs]*`
+  },
+
+  mdu: {
+    emoji: '🏢', label: 'MDU Internet',
+    examples: ['Apartment complex with 200+ units', 'Student housing near a university', 'Senior living community', 'Mixed-use residential development'],
+    systemFn: (c,s,p) => `You are a senior sales intelligence analyst for ${c}, identifying multi-dwelling unit (MDU) properties that need bulk internet and managed WiFi services.
+
+Target: Apartment complexes, condo associations, student housing, senior living, mixed-use developments, extended-stay hotels — especially under new management, renovating, or with poor existing internet.
+CRITICAL EXCLUSION: Never include ISPs, telecom companies, IT companies, or network infrastructure providers.
+
+Use web_search for REAL property/management info. Mark inferences "(inferred)".
+
+OUTPUT FORMAT:
+
+## 🏘️ Property Profile: [Property/Company Name]
+
+**Website:** [URL]
+**Property Type:** [Apartment / Condo / Student Housing / Senior Living / Mixed-Use / Hotel]
+**Management Company:** [If applicable]
+**Location:** [City, State] | **Unit Count:** [Approximate]
+**Current ISP Situation:** [Evidence of existing deal or lack thereof]
+**Recent Triggers:** [New construction, ownership transfer, management change, renovation]
+
+---
+
+## 👥 Key Decision-Makers
+
+| Name | Title | LinkedIn / Contact | Authority |
+|------|---------|--------------------|-----------|
+| [Name] | [Title] | [LinkedIn] | [Property Mgr / Asset Mgr / Regional VP] |
+
+*Best contact: [recommendation]*
+
+---
+
+## 🌐 MDU Internet Opportunity Analysis
+
+### Current Infrastructure Assessment
+- **Estimated Setup:** [Individual subscriptions vs. bulk vs. unknown]
+- **Tenant Pain Points:** [Slow speeds? No included internet? Inconsistent?]
+- **NOI Opportunity:** [How bulk internet improves net operating income]
+
+### Value Proposition
+- **Tenant Benefit:** [What residents gain]
+- **Owner/Operator Benefit:** [NOI, retention, competitive amenity]
+- **Contract Opportunity:** [Multi-year bulk deal estimate]
+
+---
+
+## 📊 Lead Score: XX/100
+
+| Dimension | Score | Rationale |
+|-----------|-------|-----------|
+| Property Scale | /20 | |
+| Internet Pain Signals | /20 | |
+| Decision-Maker Access | /20 | |
+| Contract Opportunity | /20 | |
+| Timing | /20 | |
+
+**Overall: 🔥 Hot Lead** *(or ✅ Warm / 🌡️ Lukewarm / ❄️ Cold)*
+
+---
+
+## ✉️ Cold Outreach Email
+
+**To:** [Name], [Title]
+**Subject:** [NOI improvement or tenant satisfaction angle]
+
+[Under 150 words. Lead with NOI improvement. Offer no-obligation feasibility analysis. Sign as ${s}${p ? ', '+p : ''}, ${c}]
+
+---
+*Sources: [list URLs]*`
+  },
+};
+
+const INDUSTRIES = [
+  { id:'healthcare',   emoji:'🏥', label:'Healthcare'    },
+  { id:'legal',        emoji:'⚖️', label:'Legal'         },
+  { id:'finance',      emoji:'💰', label:'Finance'       },
+  { id:'education',    emoji:'🎓', label:'Education'     },
+  { id:'manufacturing',emoji:'🏭', label:'Manufacturing' },
+  { id:'retail',       emoji:'🛍️', label:'Retail'        },
+  { id:'hospitality',  emoji:'🏨', label:'Hospitality'   },
+  { id:'realestate',   emoji:'🏘️', label:'Real Estate'   },
+  { id:'construction', emoji:'🔨', label:'Construction'  },
+  { id:'government',   emoji:'🏛️', label:'Government'    },
+  { id:'nonprofit',    emoji:'❤️', label:'Non-Profit'    },
+  { id:'logistics',    emoji:'🚚', label:'Logistics'     },
+];
+
+// ─── INIT ───
+function init() {
+  const dl = document.getElementById('disciplineList');
+  dl.innerHTML = Object.entries(DISCIPLINES).map(([id, d]) => `
+    <button class="disc-btn ${id==='ai'?'active':''} w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg border border-transparent bg-slate-800/50 text-sm text-slate-300 hover:text-slate-100"
+      data-id="${id}" onclick="setDiscipline(this)">
+      <span class="text-base leading-none">${d.emoji}</span>
+      <span class="text-xs leading-tight">${d.label}</span>
+    </button>`).join('');
+
+  const ic = document.getElementById('industryChips');
+  ic.innerHTML = INDUSTRIES.map(i => `
+    <button class="ind-chip text-[11px] px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/60 text-slate-400"
+      data-id="${i.id}" onclick="toggleInd(this)">${i.emoji} ${i.label}</button>`).join('');
+
+  renderExamples();
+}
+
+function setDiscipline(btn) {
+  document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  S.discipline = btn.dataset.id;
+  renderExamples();
+}
+
+function toggleInd(btn) {
+  const id = btn.dataset.id;
+  if (S.industries.has(id)) { S.industries.delete(id); btn.classList.remove('active'); }
+  else { S.industries.add(id); btn.classList.add('active'); }
+}
+
+function clearIndustries() {
+  S.industries.clear();
+  document.querySelectorAll('.ind-chip').forEach(c => c.classList.remove('active'));
+}
+
+function renderExamples() {
+  const d = DISCIPLINES[S.discipline];
+  document.getElementById('examples').innerHTML =
+    `<span class="text-[11px] text-slate-600">Try:</span>` +
+    d.examples.map(ex => `<button onclick="useEx(this)" class="text-[11px] px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-blue-400 hover:border-blue-800 transition-colors">${ex}</button>`).join('');
+}
+
+function useEx(btn) {
+  document.getElementById('queryInput').value = btn.textContent;
+  document.getElementById('queryInput').focus();
+}
+
+// ─── SETTINGS ───
+function openSettings() {
+  document.getElementById('cfgSender').value = S.sender;
+  document.getElementById('cfgCompany').value = S.company;
+  document.getElementById('cfgPhone').value = S.phone;
+  const m = document.getElementById('settingsModal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeSettings() {
+  const m = document.getElementById('settingsModal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+}
+function saveSettings() {
+  S.company = document.getElementById('cfgCompany').value.trim() || 'Pitt Technology Group';
+  S.sender  = document.getElementById('cfgSender').value.trim()  || 'Tyler Drenon';
+  S.phone   = document.getElementById('cfgPhone').value.trim();
+  closeSettings();
+  toast('Saved ✓');
+}
+
+// ─── SEARCH ───
+function handleKey(e) {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runSearch(); }
+}
+
+async function runSearch() {
+  const q = document.getElementById('queryInput').value.trim();
+  if (!q || S.busy) return;
+  S.busy = true;
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  document.getElementById('searchIcon').outerHTML = `<svg id="searchIcon" class="w-4 h-4 spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`;
+  document.getElementById('searchLabel').textContent = 'Searching…';
+
+  document.getElementById('emptyState').classList.add('hidden');
+
+  const cardId = 'c' + Date.now();
+  const card = buildCard(cardId, q);
+  document.getElementById('cardStack').prepend(card);
+  card.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  try {
+    const disc = DISCIPLINES[S.discipline];
+    const indNames = [...S.industries].map(id => INDUSTRIES.find(i=>i.id===id)?.label||id);
+    const sysprompt = disc.systemFn(S.company, S.sender, S.phone)
+      + (indNames.length ? `\n\nINDUSTRY CONSTRAINT: Focus ONLY on: ${indNames.join(', ')}.` : '');
+
+    const payload = {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      stream: true,
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6 }],
+      system: sysprompt,
+      messages: [{
+        role: 'user',
+        content: `Research this prospect and produce a complete intelligence dossier:\n\n"${q}"\n\nIndustry focus: ${indNames.length ? indNames.join(', ') : 'any industry'}\nService: ${disc.label}\nDate: ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}\n\nUse web search for real, current info. Find a SPECIFIC real company if this is a description. Include actual decision-maker names and LinkedIn URLs where possible. Flag all inferences clearly.`
+      }]
+    };
+
+    await streamResponse(payload, cardId);
+  } catch (err) {
+    showError(cardId, err.message);
+  } finally {
+    S.busy = false;
+    btn.disabled = false;
+    document.getElementById('searchIcon').outerHTML = `<svg id="searchIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>`;
+    document.getElementById('searchLabel').textContent = 'Research';
+  }
+}
+
+async function streamResponse(payload, cardId) {
+  // Call our backend proxy (keeps API key server-side)
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Server error ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', text = '';
+  let inTool = false, searchSnippet = '';
+
+  const bodyEl   = document.getElementById(cardId + '_body');
+  const statusEl = document.getElementById(cardId + '_status');
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') continue;
+      let ev; try { ev = JSON.parse(raw); } catch { continue; }
+
+      if (ev.type === 'content_block_start' && ev.content_block?.name === 'web_search') {
+        inTool = true; searchSnippet = '';
+        setStatus(statusEl, '🔍 Searching the web…', 'blue');
+      }
+
+      if (ev.type === 'content_block_delta') {
+        if (ev.delta?.type === 'text_delta') {
+          text += ev.delta.text;
+          inTool = false;
+          setStatus(statusEl, '✍️ Writing dossier…', 'green');
+          bodyEl.classList.add('cursor');
+          try { bodyEl.innerHTML = marked.parse(text); } catch { bodyEl.textContent = text; }
+        }
+        if (ev.delta?.type === 'input_json_delta' && inTool) {
+          searchSnippet += ev.delta.partial_json || '';
+          try {
+            const p = JSON.parse(searchSnippet);
+            if (p.query) setStatus(statusEl, `🔍 Searching: "${p.query}"`, 'blue');
+          } catch {}
+        }
+      }
+
+      if (ev.type === 'content_block_stop' && inTool) {
+        inTool = false; searchSnippet = '';
+        setStatus(statusEl, '📊 Processing results…', 'purple');
+      }
+
+      if (ev.type === 'message_stop') {
+        bodyEl.classList.remove('cursor');
+        statusEl.className = 'hidden';
+        try { bodyEl.innerHTML = marked.parse(text); } catch {}
+        bodyEl.dataset.raw = text;
+        finalizeScore(cardId, text);
+      }
+    }
+  }
+}
+
+function setStatus(el, msg, color) {
+  const map = { blue:'text-blue-400 bg-blue-950/30 border-blue-900', green:'text-green-400 bg-green-950/20 border-green-900', purple:'text-purple-400 bg-purple-950/20 border-purple-900' };
+  el.className = `text-xs px-3.5 py-1.5 rounded-lg border mx-4 mb-3 ${map[color]||map.blue}`;
+  el.textContent = msg;
+}
+
+function finalizeScore(cardId, text) {
+  const m = text.match(/Lead Score[:\s]*(\d+)\s*\/\s*100/i);
+  if (!m) return;
+  const score = parseInt(m[1]);
+  const el = document.getElementById(cardId + '_score');
+  if (!el) return;
+  let cls, label;
+  if (score >= 80)      { cls='hot';       label=`🔥 ${score}/100 Hot`; }
+  else if (score >= 60) { cls='warm';      label=`✅ ${score}/100 Warm`; }
+  else if (score >= 40) { cls='lukewarm';  label=`🌡️ ${score}/100 Lukewarm`; }
+  else                  { cls='cold';      label=`❄️ ${score}/100 Cold`; }
+  el.className = `text-xs font-semibold px-2.5 py-1 rounded-lg border ${cls}`;
+  el.textContent = label;
+}
+
+// ─── CARD ───
+function buildCard(id, query) {
+  const disc = DISCIPLINES[S.discipline];
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'bg-slate-900 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl fade-in';
+  div.innerHTML = `
+    <div class="flex items-center gap-3 px-4 py-3 bg-slate-800/60 border-b border-slate-700/50">
+      <span class="text-xl shrink-0">${disc.emoji}</span>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm text-slate-200 truncate">${esc(query)}</div>
+        <div class="text-[11px] text-slate-500">${disc.label} · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="${id}_score" class="text-xs font-semibold px-2.5 py-1 rounded-lg border text-slate-500 border-slate-700 bg-slate-800">Scoring…</span>
+        <button onclick="copyCard('${id}')" title="Copy"
+          class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+        </button>
+        <button onclick="document.getElementById('${id}').remove()" title="Dismiss"
+          class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-red-900/50 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold">✕</button>
+      </div>
+    </div>
+    <div id="${id}_status" class="text-xs px-3.5 py-1.5 rounded-lg border mx-4 mt-3 mb-1 text-blue-400 bg-blue-950/30 border-blue-900">
+      🔍 Starting live research…
+    </div>
+    <div id="${id}_body" class="dossier-body p-4 overflow-y-auto max-h-[65vh]">
+      <div class="flex items-center justify-center gap-2.5 py-10 text-slate-500 text-sm">
+        <span class="w-2 h-2 rounded-full bg-blue-500 dot-1 inline-block"></span>
+        <span class="w-2 h-2 rounded-full bg-blue-500 dot-2 inline-block"></span>
+        <span class="w-2 h-2 rounded-full bg-blue-500 dot-3 inline-block"></span>
+        <span class="ml-1">Researching…</span>
+      </div>
+    </div>`;
+  return div;
+}
+
+function showError(cardId, msg) {
+  const s = document.getElementById(cardId+'_status');
+  if (s) { s.className='text-xs px-3.5 py-1.5 rounded-lg border mx-4 my-3 text-red-400 bg-red-950/20 border-red-900'; s.textContent='⚠️ '+msg; }
+  const b = document.getElementById(cardId+'_body');
+  if (b) b.innerHTML<`<div class="text-center py-10"><div class="text-2xl mb-2">⚠️</div><div class="text-sm text-red-400">${esc(msg)}</div></div>`;
+}
+
+function copyCard(id) {
+  const b = document.getElementById(id+'_body');
+  navigator.clipboard.writeText(b?.dataset?.raw||b?.innerText||'').then(()=>toast('Copied ✓'));
+}
+function clearAll() {
+  document.getElementById('cardStack').innerHTML='';
+  document.getElementById('emptyState').classList.remove('hidden');
+  document.getElementById('queryInput').value='';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+let _t;
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`fixed bottom-5 right-5 z-50 text-sm px-4 py-2.5 rounded-xl shadow-xl border font-medium ${err?'bg-red-900 border-red-700 text-red-200':'bg-slate-800 border-slate-600 text-slate-200'}`;
+  t.style.opacity='1';t.style.transform='translateY(0)';
+  clearTimeout(_t);_t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(6px)';},2800);
+}
+
+marked.setOptions({ breaks:true, gfm:true });
+init();
+</script>
+</body>
+</html>
